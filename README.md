@@ -2,6 +2,8 @@
 
 Enter a GitHub username and get a brutally specific, AI-generated roast of the profile: the abandoned repos, the missing descriptions, the zero stars, all of it.
 
+**Live:** https://github-roast-phi.vercel.app
+
 ## Features
 
 - **Real profile data**: pulls public profile and repo info straight from the GitHub API

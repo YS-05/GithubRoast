@@ -4,7 +4,17 @@
 
 import type { RoastResult } from "@/lib/getRoast";
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+// Tried in order, best first. If one is overloaded, rate limited or retired, the next one is used.
+// Override with GEMINI_MODELS=model-a,model-b,model-c in .env.local
+const GEMINI_MODELS = (
+  process.env.GEMINI_MODELS || "gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite"
+)
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+// Easter egg: this account gets praised instead of roasted
+const OWNER_USERNAME = (process.env.OWNER_USERNAME || "YS-05").toLowerCase();
 
 type GitHubUser = {
   login: string;
@@ -43,6 +53,26 @@ function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
 }
 
+const ROAST_PROMPT = `You are a savage but playful comedian who roasts developers based on their public GitHub profile.
+Rules:
+- Be specific: reference actual repo names, numbers, languages, dates and habits from the data. Specific details are what make it funny.
+- Roast the code, the commit habits, the repo names and the profile, never the person's appearance, identity, race, gender, religion or anything outside their GitHub.
+- No slurs, no sexual content, nothing genuinely cruel. Think comedy roast, not bullying.
+- If the profile is nearly empty, roast the emptiness.
+- "roast": 2-3 short paragraphs separated by a blank line (\\n\\n), under 180 words total.
+- "burns": exactly 3 punchy one-liners, each under 20 words.
+- "roastScore": an integer 1-10 for how roastable the profile is (10 = a comedy goldmine).`;
+
+const OWNER_PROMPT = `You are this developer's most unhinged, over-the-top superfan. This is the creator of GitHub Roaster, and instead of roasting them you must praise them shamelessly.
+Rules:
+- Be specific: reference actual repo names, numbers, languages, dates and habits from the data.
+- Spin every weakness into genius. Zero stars? The world isn't ready. Abandoned repos? A visionary who moves on once a problem bores them. No descriptions? The code speaks for itself.
+- Compare them to legendary programmers and act personally honored to read their profile. Make it obviously, comically excessive.
+- Keep it clean and wholesome.
+- "roast": 2-3 short paragraphs of pure praise separated by a blank line (\\n\\n), under 180 words total.
+- "burns": exactly 3 punchy one-liner compliments, each under 20 words.
+- "roastScore": always 10.`;
+
 export async function GET(req: Request) {
   const username = new URL(req.url).searchParams.get("username")?.trim();
 
@@ -53,6 +83,8 @@ export async function GET(req: Request) {
   if (!process.env.GEMINI_API_KEY) {
     return errorResponse("Server is missing GEMINI_API_KEY.", 500);
   }
+
+  const isOwner = username.toLowerCase() === OWNER_USERNAME;
 
   // 1. GitHub data
   const [userRes, reposRes] = await Promise.all([
@@ -119,55 +151,64 @@ export async function GET(req: Request) {
     })),
   };
 
-  // 3. Ask Gemini for the roast, as JSON
-  const systemPrompt = `You are a savage but playful comedian who roasts developers based on their public GitHub profile.
-Rules:
-- Be specific: reference actual repo names, numbers, languages, dates and habits from the data. Specific details are what make it funny.
-- Roast the code, the commit habits, the repo names and the profile, never the person's appearance, identity, race, gender, religion or anything outside their GitHub.
-- No slurs, no sexual content, nothing genuinely cruel. Think comedy roast, not bullying.
-- If the profile is nearly empty, roast the emptiness.
-- "roast": 2-3 short paragraphs separated by a blank line (\\n\\n), under 180 words total.
-- "burns": exactly 3 punchy one-liners, each under 20 words.
-- "roastScore": an integer 1-10 for how roastable the profile is (10 = a comedy goldmine).`;
-
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": process.env.GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [
+  // 3. Ask Gemini for the roast (or the praise), as JSON
+  const geminiBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: isOwner ? OWNER_PROMPT : ROAST_PROMPT }] },
+    contents: [
+      {
+        role: "user",
+        parts: [
           {
-            role: "user",
-            parts: [{ text: `Roast this GitHub profile:\n${JSON.stringify(profileSummary)}` }],
+            text: `${isOwner ? "Praise" : "Roast"} this GitHub profile:\n${JSON.stringify(profileSummary)}`,
           },
         ],
-        generationConfig: {
-          temperature: 1,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              roastScore: { type: "INTEGER" },
-              roast: { type: "STRING" },
-              burns: { type: "ARRAY", items: { type: "STRING" } },
-            },
-            required: ["roastScore", "roast", "burns"],
-          },
+      },
+    ],
+    generationConfig: {
+      temperature: 1,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          roastScore: { type: "INTEGER" },
+          roast: { type: "STRING" },
+          burns: { type: "ARRAY", items: { type: "STRING" } },
         },
-      }),
-    }
-  );
+        required: ["roastScore", "roast", "burns"],
+      },
+    },
+  });
 
-  if (geminiRes.status === 429) {
-    return errorResponse("The roast machine is overheating (rate limit). Try again in a minute.", 429);
+  // Try each model in order until one answers
+  let geminiRes: Response | null = null;
+  for (const model of GEMINI_MODELS) {
+    geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY,
+        },
+        body: geminiBody,
+      }
+    );
+    if (geminiRes.ok) break;
+
+    console.error(`Gemini error (${model}):`, geminiRes.status, await geminiRes.text());
+    // Overloaded (503/500), rate limited (429) or retired (404): try the next model.
+    // Anything else (bad key, bad request) would fail on every model, so stop.
+    if (![500, 503, 429, 404].includes(geminiRes.status)) break;
   }
-  if (!geminiRes.ok) {
-    console.error("Gemini error:", geminiRes.status, await geminiRes.text());
+
+  if (!geminiRes || !geminiRes.ok) {
+    const status = geminiRes?.status;
+    if (status === 429) {
+      return errorResponse("The roast machine is overheating (rate limit). Try again in a minute.", 429);
+    }
+    if (status === 503 || status === 500) {
+      return errorResponse("Gemini is swamped right now. Give it a minute and try again.", 503);
+    }
     return errorResponse("The roast machine broke. Try again.", 502);
   }
 
@@ -176,6 +217,9 @@ Rules:
     const geminiJson = await geminiRes.json();
     const text: string = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     roastData = JSON.parse(text);
+    if (typeof roastData.roast !== "string" || !Array.isArray(roastData.burns)) {
+      throw new Error("Missing fields in roast JSON");
+    }
   } catch (err) {
     console.error("Couldn't parse Gemini response:", err);
     return errorResponse("The roast came out garbled. Try again.", 502);
@@ -192,9 +236,10 @@ Rules:
       publicRepos: user.public_repos,
     },
     stats: { totalStars, topLanguages },
-    roastScore: Math.min(10, Math.max(1, Math.round(roastData.roastScore || 5))),
+    roastScore: isOwner ? 10 : Math.min(10, Math.max(1, Math.round(roastData.roastScore || 5))),
     roast: roastData.roast,
-    burns: (roastData.burns || []).slice(0, 3),
+    burns: roastData.burns.slice(0, 3),
+    isOwner,
   };
 
   return Response.json(result);

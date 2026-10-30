@@ -17,6 +17,7 @@ export type RoastResult = {
   roastScore: number; // 1-10
   roast: string; // paragraphs separated by \n\n
   burns: string[]; // 3 one-liners
+  isOwner?: boolean; // easter egg: true when the owner's profile gets praised instead
 };
 
 // Carries the HTTP status so the UI can tell "user not found" apart from other failures

@@ -9,6 +9,7 @@ type RoastCardProps = {
 export function RoastCard({ result, onReset }: RoastCardProps) {
   const [copied, setCopied] = useState(false)
   const paragraphs = result.roast.split("\n\n")
+  const isOwner = result.isOwner === true
   const stats = [
     { label: "Repos", value: result.user.publicRepos },
     { label: "Followers", value: result.user.followers },
@@ -17,7 +18,7 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
   ]
 
   async function copyRoast() {
-    const text = `${result.roast}\n\nTop burns:\n${result.burns.map((burn) => `— ${burn}`).join("\n")}`
+    const text = `${result.roast}\n\n${isOwner ? "Top compliments" : "Top burns"}:\n${result.burns.map((burn) => `— ${burn}`).join("\n")}`
 
     try {
       await navigator.clipboard.writeText(text)
@@ -33,10 +34,10 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#ff6842]">
-            Public record reviewed
+            {isOwner ? "Owner detected" : "Public record reviewed"}
           </p>
           <h1 className="font-display text-4xl font-black uppercase tracking-tight sm:text-5xl">
-            Here&apos;s what went wrong.
+            {isOwner ? "Here's what went right." : "Here's what went wrong."}
           </h1>
         </div>
         <span className="hidden text-xs font-semibold uppercase tracking-[0.15em] text-white/30 sm:block">
@@ -108,7 +109,7 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
 
           <aside className="score-panel flex flex-col border-t border-white/10 p-5 sm:p-8 lg:border-l lg:border-t-0">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff8a68]">
-              Roast score
+              {isOwner ? "Legend score" : "Roast score"}
             </p>
             <div className="mt-2 flex items-end gap-2">
               <span className="font-display score-number text-[7rem] font-black leading-[0.85]">
@@ -120,7 +121,7 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
             </div>
             <div
               className="mt-5 flex gap-1.5"
-              aria-label={`Roast score: ${result.roastScore} out of 10`}
+              aria-label={`${isOwner ? "Legend" : "Roast"} score: ${result.roastScore} out of 10`}
             >
               {Array.from({ length: 10 }, (_, index) => (
                 <span
@@ -136,7 +137,7 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
 
             <div className="mt-8 flex-1">
               <p className="mb-4 text-[10px] font-black uppercase tracking-[0.22em] text-white/40">
-                Top burns
+                {isOwner ? "Top compliments" : "Top burns"}
               </p>
               <ol className="space-y-4">
                 {result.burns.map((burn, index) => (

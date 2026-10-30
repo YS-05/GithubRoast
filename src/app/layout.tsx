@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow_Condensed, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
+// Same fonts as the Figma design, loaded the Next.js way
 const display = Barlow_Condensed({
   subsets: ["latin"],
   weight: ["700", "800", "900"],
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} antialiased`}>
-      <body>{children}</body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

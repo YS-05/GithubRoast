@@ -109,25 +109,33 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
 
           <aside className="score-panel flex flex-col border-t border-white/10 p-5 sm:p-8 lg:border-l lg:border-t-0">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ff8a68]">
-              {isOwner ? "Legend score" : "Roast score"}
+              Roast score
             </p>
-            <div className="mt-2 flex items-end gap-2">
-              <span className="font-display score-number text-[7rem] font-black leading-[0.85]">
-                {result.roastScore}
-              </span>
-              <span className="mb-2 text-lg font-extrabold text-white/30">
-                / 10
-              </span>
-            </div>
+            {isOwner ? (
+              <div className="mt-3">
+                <span className="font-display score-number block text-6xl font-black lg:text-[2.6rem] leading-[0.9] tracking-tight">
+                  Unroastable
+                </span>
+              </div>
+            ) : (
+              <div className="mt-2 flex items-end gap-2">
+                <span className="font-display score-number text-[7rem] font-black leading-[0.85]">
+                  {result.roastScore}
+                </span>
+                <span className="mb-2 text-lg font-extrabold text-white/30">
+                  / 10
+                </span>
+              </div>
+            )}
             <div
               className="mt-5 flex gap-1.5"
-              aria-label={`${isOwner ? "Legend" : "Roast"} score: ${result.roastScore} out of 10`}
+              aria-label={isOwner ? "Roast score: unroastable" : `Roast score: ${result.roastScore} out of 10`}
             >
               {Array.from({ length: 10 }, (_, index) => (
                 <span
                   key={index}
                   className={`h-2 flex-1 skew-x-[-14deg] rounded-sm ${
-                    index < result.roastScore
+                    !isOwner && index < result.roastScore
                       ? "bg-gradient-to-r from-[#ff3b1d] to-[#ff9e43] shadow-[0_0_8px_rgba(255,78,37,.45)]"
                       : "bg-white/10"
                   }`}

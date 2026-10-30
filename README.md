@@ -1,6 +1,6 @@
 # GitHub Roaster
 
-Enter a GitHub username and get a brutally specific, AI-generated roast of the profile: the abandoned repos, the missing descriptions, the zero stars, all of it.
+Enter a GitHub username and get a roast written by AI, based on the profile's actual repos, languages and activity.
 
 **Live:** https://github-roast-phi.vercel.app
 

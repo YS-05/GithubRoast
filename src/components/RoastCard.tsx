@@ -10,6 +10,7 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
   const [copied, setCopied] = useState(false)
   const paragraphs = result.roast.split("\n\n")
   const isOwner = result.isOwner === true
+  const tips = result.tips ?? []
   const stats = [
     { label: "Repos", value: result.user.publicRepos },
     { label: "Followers", value: result.user.followers },
@@ -164,6 +165,40 @@ export function RoastCard({ result, onReset }: RoastCardProps) {
           </aside>
         </div>
       </div>
+
+      {(isOwner || tips.length > 0) && (
+        <div className="mt-4 rounded-[1.5rem] border border-white/8 bg-white/[0.025] p-5 sm:p-8">
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ffb35c]">
+              How to fix this
+            </p>
+            {!isOwner && (
+              <span className="hidden text-[10px] font-semibold uppercase tracking-[0.15em] text-white/25 sm:block">
+                No jokes, just fixes
+              </span>
+            )}
+          </div>
+          {isOwner ? (
+            <p className="mt-3 text-sm leading-6 text-[#cbbdb3]">Nothing to fix.</p>
+          ) : (
+            <ol
+              className={`mt-4 grid gap-3 ${tips.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}
+            >
+              {tips.map((tip, index) => (
+                <li
+                  key={tip}
+                  className="flex gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-4 text-sm leading-6 text-[#d8c8bd]"
+                >
+                  <span className="font-display shrink-0 text-lg font-black leading-6 text-[#ffb35c]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
 
       <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
         <button

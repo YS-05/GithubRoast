@@ -17,6 +17,7 @@ export type RoastResult = {
   roastScore: number; // 1-10
   roast: string; // paragraphs separated by \n\n
   burns: string[]; // 3 one-liners
+  tips?: string[]; // 2-3 practical ways to improve the profile
   isOwner?: boolean; // easter egg: true when the owner's profile gets praised instead
 };
 
